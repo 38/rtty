@@ -1,4 +1,4 @@
-CC=android_gcc
+CC=gcc
 HOSTCC=gcc
 CFLAGS=-DTARGET_ANDROID -g
 HCFLAGS=-DTARGET_LINUX -g

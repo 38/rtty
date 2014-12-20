@@ -7,10 +7,9 @@
 #include <string.h>
 #include <termios.h>
 #include <errno.h>
+
 #define _HAS_GRANTPT
-#ifdef TARGET_ANDROID
-#define _HAS_PTSNAME
-#endif
+
 #define _HAS_UNLOCKPT
 
 #ifdef TARGET_ANDROID
@@ -159,25 +158,3 @@ int tty_raw(int fd)
 	return(0);
 }
 
-/*
-int main()
-{
-	char slave[1000];
-	int fdm;
-	pid_t pid;
-	if( ( pid = pty_fork( &fdm , slave , 1000 , NULL ,NULL ) ) == 0 )
-	{
-		execlp( "/bin/login" , "/bin/longin" ,NULL);
-	}
-	else
-	{
-		if( pid < 0 )
-		{
-			perror("oh wtf");
-			printf("%d\n",-pid);
-		}
-		FILE* fin = fdopen( fdm , "r");
-		FILE* fout = fdopen( fdm , "w" );
-	}
-	return 0;
-}*/

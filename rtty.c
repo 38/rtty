@@ -65,7 +65,7 @@ void term_loop(int fdm,char* signature)
 	struct winsize wsz;
 	tcgetattr( STDIN_FILENO , &saved_termios );
 	ioctl( STDIN_FILENO , TIOCGWINSZ , &wsz );	
-	write( fdm , &wsz , sizeof(wsz) );
+	write_encoded( fdm , &wsz , sizeof(wsz) );
 	write_termios( fdm , &saved_termios );
 	
 	char buf[512];
@@ -78,24 +78,23 @@ void term_loop(int fdm,char* signature)
 	        signal( SIGWINCH , onwinch );
 		while(1)
 		{
-			size_t ret = read( STDIN_FILENO , buf , 512 );
+			size_t ret = read_encoded( STDIN_FILENO , buf , 512 );
 			if(ret == 0 )
 				break;
 			struct iopacket ip;
 			ip.ip_type = IPT_DATA;
 			ip.ip_len  = ret;
 			ip.ip_data = (void*)buf;
-			//write(fdm,buf,ret);
 			write_iopacket( fdm , &ip );
 		}
 		exit(0);
 	}
 	while(1)
 	{
-		size_t ret = read( fdm , buf , 512 );
+		size_t ret = read_encoded( fdm , buf , 512 );
 		if(ret == 0 )
 			break;
-		write(STDOUT_FILENO,buf,ret);
+		write_encoded(STDOUT_FILENO,buf,ret);
 	}
 	tcsetattr( STDIN_FILENO , TCSAFLUSH , &saved_termios);	
 	kill( child , SIGKILL);
@@ -165,7 +164,7 @@ void push_file(int fd , char* sour , char* dest , char* signature)
 	int br = -1;
 	while(1)
 	{
-		size_t ret = read( sfd , buffer , 4096 );
+		size_t ret = read_encoded( sfd , buffer , 4096 );
 		if( ret == 0 )
 			break;
 		sz -= ret;
@@ -175,7 +174,7 @@ void push_file(int fd , char* sour , char* dest , char* signature)
 			printf("\033[u\033[s%d%% completed", br = rate);
 			fflush(stdout);
 		}
-		write( fd , buffer , ret );
+		write_encoded( fd , buffer , ret );
 	}
 	puts("");
 	if( sz != 0 ) puts("File transmitted unsuccessful");
@@ -227,10 +226,10 @@ void pull_file(int fd , char* sour , char* dest , char* signature)
 	int br = -1;
 	while(sz)
 	{
-		int ret = read( fd , buffer , 4096 );
+		int ret = read_encoded( fd , buffer , 4096 );
 		if( ret == 0 ) break;
 		sz -= ret;
-		write( dfd , buffer , ret );
+		write_encoded( dfd , buffer , ret );
 		int rate = 100-sz*100/pr.pr_size;
 		if( br != rate )
 		{

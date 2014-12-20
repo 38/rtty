@@ -42,6 +42,8 @@ struct iopacket
 	unsigned int ip_len;
 	void* ip_data;
 };
+size_t read_encoded(int fd, void* buf, size_t size);
+size_t write_encoded(int fd, const void* buf, size_t size);
 size_t read_data( int fd , void * buf , size_t size );
 size_t read_termios( int fd , struct termios *buf );
 size_t write_termios( int fd , const struct termios *buf );

@@ -38,7 +38,7 @@ void do_shell( int fd )
 	struct winsize wsz;
 	struct termios tio = {};
 	struct shellparm sp = {};
-	printf("shell command :");
+	printf("shell command: ");
 	read_shellparm( fd , &sp );
 	int j;
 	for( j = 0 ; j < sp.sp_argc ; j ++ )
@@ -46,7 +46,13 @@ void do_shell( int fd )
 	puts("");
 	read_data( fd , &wsz , sizeof(wsz) );
 	read_termios( fd , &tio );
-	if( ( epid = pty_fork( &fdm , slave , 1000 , &tio , &wsz) ) == 0 )
+	epid = pty_fork( &fdm , slave , 1000 , &tio , &wsz); 
+	if(epid < 0)
+	{
+		perror("fork");
+		return;
+	}
+	if( epid == 0 )
 	{
 		execvp( sp.sp_exec , sp.sp_argv );
 		perror("exec");
@@ -55,14 +61,14 @@ void do_shell( int fd )
 	//IO procedure
 	size_t sz;
 	//int buf[1024];
-	struct iopacket ip;
+	struct iopacket ip = {};
 	if( ( pid = fork() ) != 0 )
 	{/*parent */
 		
 		while( ( sz = read_iopacket( fd , &ip ) ) && !end_flag )
 		{
 			if( ip.ip_type == IPT_DATA )
-				write( fdm , ip.ip_data , ip.ip_len );
+				write_encoded( fdm , ip.ip_data , ip.ip_len );
 			else if( ip.ip_type == IPT_WINCH )
 			{
 				unsigned short *pwsz = (unsigned short*)ip.ip_data;
@@ -70,6 +76,7 @@ void do_shell( int fd )
 				ioctl( fdm , TIOCSWINSZ , &wsz );
 				printf("terminal resized\n");
 			}
+			if(ip.ip_data) free(ip.ip_data);
 		}
 		//puts("closed");
 		kill( pid , SIGINT);
@@ -83,8 +90,8 @@ void do_shell( int fd )
 	while(1)
 	{
 		char buf[1024];
-		size_t ret = read( fdm , buf , 1024 );
-		if( write( fd , buf , ret ) != ret )
+		size_t ret = read_encoded( fdm , buf , 1024 );
+		if( write_encoded( fd , buf , ret ) != ret )
 		{
 			perror("Write Error");
 			break;
@@ -127,10 +134,10 @@ void do_push( int fd )
 	}
 	while(rsz)
 	{
-		size_t sz = read( fd , buffer , 4096 );
+		size_t sz = read_encoded( fd , buffer , 4096 );
 		if( sz == 0 )
 			break;
-		write( dfd , buffer , sz );
+		write_encoded( dfd , buffer , sz );
 		rsz -= sz;
 	}
 	fchmod( dfd , pp.psp_mode );
@@ -155,7 +162,7 @@ void do_pull(int fd)
 	struct pullret pr;
 	pr.pr_mode = st.st_mode;
 	pr.pr_size = st.st_size;
-	write(fd,&pr,sizeof(pr));
+	write_encoded(fd,&pr,sizeof(pr));
 	int sfd = open( path , O_RDONLY );
 	if( sfd < 0 )
 	{
@@ -166,11 +173,11 @@ void do_pull(int fd)
 	size_t sz = st.st_size;
 	while(1)
 	{
-		size_t ret = read( sfd , buffer , 4096 );
+		size_t ret = read_encoded( sfd , buffer , 4096 );
 		if( ret == 0 )
 			break;
 		sz -= ret;
-		write( fd , buffer , ret );
+		write_encoded( fd , buffer , ret );
 	}
 	if( sz )
 		puts("oh no , something may be wrong ....");
@@ -195,7 +202,7 @@ void on_accept( int fd , struct sockaddr *addr , socklen_t len )
 int port = -1;
 int main()
 {
-	FILE* cfile = fopen("/etc/rttyd.cfg","r");
+	FILE* cfile = fopen("rttyd.cfg","r");
 	if( cfile )
 	{
 		while( !feof(cfile) )
@@ -212,7 +219,7 @@ int main()
 			}
 		}
 	}
-	fclose(cfile);
+	if(cfile) fclose(cfile);
 	if( port == -1 )
 	{
 		printf("no port number specified\nexiting...");
